@@ -30,6 +30,12 @@ namespace OpenBveApi.Runtime
 		/// <summary>The stop position applicable to the current train.</summary>
 		[DataMember]
 		public double StopPosition;
+		/// <summary>The forward tolerance applicable to the stop position.</summary>
+		[DataMember]
+		public double ForwardTolerance;
+		/// <summary>The backward tolerance applicable to the stop position.</summary>
+		[DataMember]
+		public double BackwardTolerance;
 		/// <summary>The stop mode for this station</summary>
 		[DataMember]
 		public StationStopMode StopMode;
@@ -84,7 +90,9 @@ namespace OpenBveApi.Runtime
 		/// <summary>Creates a train-specific station</summary>
 		/// <param name="s">The base station</param>
 		/// <param name="stopPosition">The stop position applicable to our train</param>
-		public Station(Station s, double stopPosition)
+		/// <param name="forwardTolerance">The forward tolerance applicable to the stop point</param>
+		/// <param name="backwardTolerance">The backward tolerance applicable to the stop point</param>
+		public Station(Station s, double stopPosition, double forwardTolerance, double backwardTolerance)
 		{
 			Name = s.Name;
 			ArrivalTime = s.ArrivalTime;
@@ -95,6 +103,8 @@ namespace OpenBveApi.Runtime
 			OpenRightDoors = s.OpenRightDoors;
 			DefaultTrackPosition = s.DefaultTrackPosition;
 			StopPosition = stopPosition;
+			ForwardTolerance = forwardTolerance;
+			BackwardTolerance = backwardTolerance;
 			StopMode = s.StopMode;
 			Type = s.Type;
 		}
