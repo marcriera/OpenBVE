@@ -27,6 +27,46 @@ namespace ZuikiInput
 	/// <summary>Class representing a generic controller.</summary>
 	public class Controller
 	{
+		/// <summary>Enumeration representing controller buttons.</summary>
+		[Flags]
+		protected internal enum ControllerButtons
+		{
+			/// <summary>No buttons</summary>
+			None = 0,
+			/// <summary>No buttons</summary>
+			A = 0x1,
+			/// <summary>No buttons</summary>
+			B = 0x2,
+			/// <summary>No buttons</summary>
+			X = 0x4,
+			/// <summary>No buttons</summary>
+			Y = 0x8,
+			/// <summary>No buttons</summary>
+			Up = 0x10,
+			/// <summary>No buttons</summary>
+			Down = 0x20,
+			/// <summary>No buttons</summary>
+			Left = 0x40,
+			/// <summary>No buttons</summary>
+			Right = 0x80,
+			/// <summary>No buttons</summary>
+			Plus = 0x100,
+			/// <summary>No buttons</summary>
+			Minus = 0x200,
+			/// <summary>No buttons</summary>
+			L = 0x400,
+			/// <summary>No buttons</summary>
+			R = 0x800,
+			/// <summary>No buttons</summary>
+			ZL = 0x1000,
+			/// <summary>No buttons</summary>
+			ZR = 0x2000,
+			/// <summary>No buttons</summary>
+			Home = 0x4000,
+			/// <summary>No buttons</summary>
+			Screenshot = 0x8000,
+		}
+
 		/// <summary>Class representing controller capabilities.</summary>
 		protected internal class ControllerCapabilities
 		{
@@ -39,15 +79,20 @@ namespace ZuikiInput
 			/// <summary>Whether the controller has a reverser.</summary>
 			internal readonly bool HasReverser;
 
+			/// <summary>The buttons supported by the controller.</summary>
+			internal readonly ControllerButtons Buttons;
+
 			/// <summary>Creates a set of controller capabilities.</summary>
 			/// <param name="brakeNotches">The amount of brake notches (excluding N and EMG).</param>
 			/// <param name="powerNotches">The amount of power notches (excluding N).</param>
 			/// <param name="hasReverser">Whether the controller has a reverser.</param>
-			internal ControllerCapabilities(int brakeNotches, int powerNotches, bool hasReverser)
+			/// <param name="buttons">The buttons supported by the controller.</param>
+			internal ControllerCapabilities(int brakeNotches, int powerNotches, bool hasReverser, ControllerButtons buttons)
 			{
 				BrakeNotches = brakeNotches;
 				PowerNotches = powerNotches;
 				HasReverser = hasReverser;
+				Buttons = buttons;
 			}
 		}
 

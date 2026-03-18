@@ -52,7 +52,7 @@ namespace ZuikiInput
 		/// <summary>The controller index in OpenTK.</summary>
 		private int controllerIndex;
 
-		private MasconController(Guid guid, string name, int index, ControllerModels model, double[] brakeNotchValues, double[] powerNotchValues, bool hasReverser)
+		private MasconController(Guid guid, string name, int index, ControllerModels model, double[] brakeNotchValues, double[] powerNotchValues, bool hasReverser, ControllerButtons buttons)
 		{
 			Guid = guid;
 			Name = name;
@@ -60,7 +60,7 @@ namespace ZuikiInput
 			controllerModel = model;
 			brakeValues = brakeNotchValues;
 			powerValues = powerNotchValues;
-			Capabilities = new ControllerCapabilities(brakeNotchValues.Length / 2 - 2, powerNotchValues.Length / 2 - 1, hasReverser);
+			Capabilities = new ControllerCapabilities(brakeNotchValues.Length / 2 - 2, powerNotchValues.Length / 2 - 1, hasReverser, buttons);
 		}
 
 		/// <summary>Lists the controllers supported by this class.</summary>
@@ -88,7 +88,7 @@ namespace ZuikiInput
 						{
 							double[] brake = { -0.15, 0.15, -0.25, -0.15, -0.35, -0.25, -0.45, -0.35, -0.57, -0.45, -0.7, -0.57, -0.8, -0.7, -0.9, -0.8, -0.97, -0.9, -1, -0.97 };
 							double[] power = { -0.15, 0.15, 0.15, 0.32, 0.32, 0.52, 0.52, 0.7, 0.7, 0.87, 0.87, 1 };
-							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, false);
+							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, false, ControllerButtons.None);
 							controller.State.IsConnected = Joystick.GetState(i).IsConnected;
 							if (!controllerList.ContainsKey(guid))
 							{
@@ -103,7 +103,7 @@ namespace ZuikiInput
 						{
 							double[] brake = { -0.15, 0.15, -0.25, -0.15, -0.35, -0.25, -0.45, -0.35, -0.57, -0.45, -0.7, -0.57, -0.8, -0.7, -0.9, -0.8, -0.97, -0.9, -1, -0.97 };
 							double[] power = { -0.15, 0.15, 0.15, 0.32, 0.32, 0.52, 0.52, 0.7, 0.7, 0.87, 0.87, 1 };
-							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, true);
+							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, true, ControllerButtons.None);
 							controller.State.IsConnected = Joystick.GetState(i).IsConnected;
 							if (!controllerList.ContainsKey(guid))
 							{

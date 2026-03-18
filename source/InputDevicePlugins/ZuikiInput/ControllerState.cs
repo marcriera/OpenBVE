@@ -91,5 +91,8 @@ namespace ZuikiInput
 		/// <summary>The reverser position reported by the controller.</summary>
 		internal ReverserPositions ReverserPosition;
 
+		/// <summary>The pressed buttons reported by the controller.</summary>
+		internal Controller.ControllerButtons PressedButtons;
+
 	}
 }
