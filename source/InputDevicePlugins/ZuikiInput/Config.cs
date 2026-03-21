@@ -50,6 +50,10 @@ namespace ZuikiInput
 
 			/// <summary>Whether to map the hold brake to B1.</summary>
 			public bool MapHoldBrake;
+
+			/// <summary>The list of controller profiles.</summary>
+			[XmlIgnore]
+			public Dictionary<Guid, ControllerProfile> ControllerProfiles;
 		}
 
 		/// <summary>The configuration for the plugin.</summary>
@@ -73,6 +77,9 @@ namespace ZuikiInput
 
 			// Initialize the list of controllers
 			controllers = new Dictionary<Guid, Controller>();
+
+			// Initialize the list of controller profiles
+			Configuration.ControllerProfiles = new Dictionary<Guid, ControllerProfile>();
 
 			// Initialize the timer
 			inputTimer = new Timer { Interval = 100 };

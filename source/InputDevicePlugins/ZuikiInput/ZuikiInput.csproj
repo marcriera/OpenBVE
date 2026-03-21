@@ -51,6 +51,9 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\..\..\packages\Newtonsoft.Json.13.0.4\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ZuikiInput.cs" />
@@ -64,6 +67,7 @@
       <DependentUpon>Config.cs</DependentUpon>
     </Compile>
     <Compile Include="Controller.Mascon.cs" />
+    <Compile Include="ControllerProfile.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\OpenBveApi\OpenBveApi.csproj">

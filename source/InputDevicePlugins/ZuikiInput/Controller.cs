@@ -33,37 +33,37 @@ namespace ZuikiInput
 		{
 			/// <summary>No buttons</summary>
 			None = 0,
-			/// <summary>No buttons</summary>
+			/// <summary>A button</summary>
 			A = 0x1,
-			/// <summary>No buttons</summary>
+			/// <summary>B button</summary>
 			B = 0x2,
-			/// <summary>No buttons</summary>
+			/// <summary>X button</summary>
 			X = 0x4,
-			/// <summary>No buttons</summary>
+			/// <summary>Y button</summary>
 			Y = 0x8,
-			/// <summary>No buttons</summary>
+			/// <summary>D-pad Up button</summary>
 			Up = 0x10,
-			/// <summary>No buttons</summary>
+			/// <summary>D-pad Down button</summary>
 			Down = 0x20,
-			/// <summary>No buttons</summary>
+			/// <summary>D-pad Left button</summary>
 			Left = 0x40,
-			/// <summary>No buttons</summary>
+			/// <summary>D-pad Right button</summary>
 			Right = 0x80,
-			/// <summary>No buttons</summary>
+			/// <summary>+ button</summary>
 			Plus = 0x100,
-			/// <summary>No buttons</summary>
+			/// <summary>- button</summary>
 			Minus = 0x200,
-			/// <summary>No buttons</summary>
+			/// <summary>L button</summary>
 			L = 0x400,
-			/// <summary>No buttons</summary>
+			/// <summary>R button</summary>
 			R = 0x800,
-			/// <summary>No buttons</summary>
+			/// <summary>ZL button</summary>
 			ZL = 0x1000,
-			/// <summary>No buttons</summary>
+			/// <summary>ZR button</summary>
 			ZR = 0x2000,
-			/// <summary>No buttons</summary>
+			/// <summary>Home button</summary>
 			Home = 0x4000,
-			/// <summary>No buttons</summary>
+			/// <summary>Screenshot button</summary>
 			Screenshot = 0x8000,
 		}
 
@@ -134,6 +134,7 @@ namespace ZuikiInput
 			PreviousState.BrakeNotch = State.BrakeNotch;
 			PreviousState.PowerNotch = State.PowerNotch;
 			PreviousState.ReverserPosition = State.ReverserPosition;
+			PreviousState.PressedButtons = State.PressedButtons;
 		}
 
 		/// <summary>Gets a controller's ID string from an OpenTK GUID.</summary>

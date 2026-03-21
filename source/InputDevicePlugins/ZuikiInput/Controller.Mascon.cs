@@ -83,12 +83,12 @@ namespace ZuikiInput
 					case "33dd:0003":
 					case "33dd:0004":
 					case "33dd:0005":
-						// The controller uses buttons 7-10 and axis 2, we need those at minimum
-						if (Joystick.GetCapabilities(i).ButtonCount >= 10 && Joystick.GetCapabilities(i).AxisCount >= 2)
+						// The controller uses buttons 1-13, hat 1 and axis 2, we need those at minimum
+						if (Joystick.GetCapabilities(i).ButtonCount >= 13 && Joystick.GetCapabilities(i).HatCount >= 1 && Joystick.GetCapabilities(i).AxisCount >= 2)
 						{
 							double[] brake = { -0.15, 0.15, -0.25, -0.15, -0.35, -0.25, -0.45, -0.35, -0.57, -0.45, -0.7, -0.57, -0.8, -0.7, -0.9, -0.8, -0.97, -0.9, -1, -0.97 };
 							double[] power = { -0.15, 0.15, 0.15, 0.32, 0.32, 0.52, 0.52, 0.7, 0.7, 0.87, 0.87, 1 };
-							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, false, ControllerButtons.None);
+							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, false, (ControllerButtons)0xFFFF);
 							controller.State.IsConnected = Joystick.GetState(i).IsConnected;
 							if (!controllerList.ContainsKey(guid))
 							{
@@ -98,12 +98,12 @@ namespace ZuikiInput
 						break;
 					// ZUIKI Mascon Pro
 					case "33dd:0006":
-						// The controller uses buttons 7-10 and axis 2, we need those at minimum
-						if (Joystick.GetCapabilities(i).ButtonCount >= 10 && Joystick.GetCapabilities(i).AxisCount >= 2)
+						// The controller uses buttons 1-13, hat 1 and axis 2, we need those at minimum
+						if (Joystick.GetCapabilities(i).ButtonCount >= 13 && Joystick.GetCapabilities(i).HatCount >= 1 && Joystick.GetCapabilities(i).AxisCount >= 2)
 						{
 							double[] brake = { -0.15, 0.15, -0.25, -0.15, -0.35, -0.25, -0.45, -0.35, -0.57, -0.45, -0.7, -0.57, -0.8, -0.7, -0.9, -0.8, -0.97, -0.9, -1, -0.97 };
 							double[] power = { -0.15, 0.15, 0.15, 0.32, 0.32, 0.52, 0.52, 0.7, 0.7, 0.87, 0.87, 1 };
-							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, true, ControllerButtons.None);
+							Controller controller = new MasconController(guid, name, i, ControllerModels.Mascon, brake, power, true, (ControllerButtons)0xFFFF);
 							controller.State.IsConnected = Joystick.GetState(i).IsConnected;
 							if (!controllerList.ContainsKey(guid))
 							{
@@ -154,6 +154,25 @@ namespace ZuikiInput
 						break;
 					}
 				}
+
+				// Buttons
+				State.PressedButtons = ControllerButtons.None;
+				if (state.IsButtonDown(0)) State.PressedButtons |= ControllerButtons.Y;
+				if (state.IsButtonDown(1)) State.PressedButtons |= ControllerButtons.B;
+				if (state.IsButtonDown(2)) State.PressedButtons |= ControllerButtons.A;
+				if (state.IsButtonDown(3)) State.PressedButtons |= ControllerButtons.X;
+				if (state.IsButtonDown(4)) State.PressedButtons |= ControllerButtons.L;
+				if (state.IsButtonDown(5)) State.PressedButtons |= ControllerButtons.R;
+				if (state.IsButtonDown(6)) State.PressedButtons |= ControllerButtons.ZL;
+				if (state.IsButtonDown(7)) State.PressedButtons |= ControllerButtons.ZR;
+				if (state.IsButtonDown(8)) State.PressedButtons |= ControllerButtons.Minus;
+				if (state.IsButtonDown(9)) State.PressedButtons |= ControllerButtons.Plus;
+				if (state.IsButtonDown(12)) State.PressedButtons |= ControllerButtons.Home;
+				if (state.IsButtonDown(13)) State.PressedButtons |= ControllerButtons.Screenshot;
+				if (state.GetHat(0).IsUp) State.PressedButtons |= ControllerButtons.Up;
+				if (state.GetHat(0).IsDown) State.PressedButtons |= ControllerButtons.Down;
+				if (state.GetHat(0).IsLeft) State.PressedButtons |= ControllerButtons.Left;
+				if (state.GetHat(0).IsRight) State.PressedButtons |= ControllerButtons.Right;
 			}
 		}
 
