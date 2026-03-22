@@ -21,6 +21,8 @@
 //SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using System;
+using OpenBveApi.Runtime;
+using OpenBveApi.Interface;
 
 namespace ZuikiInput
 {

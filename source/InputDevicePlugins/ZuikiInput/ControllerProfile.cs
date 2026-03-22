@@ -20,62 +20,32 @@
 //(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 //SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-using System;
 using OpenBveApi.Interface;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 namespace ZuikiInput
 {
 	/// <summary>Class representing a configuration profile for a controller.</summary>
 	public class ControllerProfile
 	{
-		/// <summary>The Guid of the controller to apply the profile to.</summary>
-		//public Guid Guid;
+		/// <summary>Whether to convert the handle notches to match the driver's train.</summary>
+		public bool ConvertNotches;
 
-		//internal class ButtonMappings
-		//{
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonA;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonB;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonX;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonY;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonUp;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonDown;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonLeft;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonRight;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonMinus;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonPlus;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonL;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonR;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonZL;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonZR;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonHome;
-		//	[JsonConverter(typeof(StringEnumConverter))]
-		//	internal Translations.Command ButtonScreenshot;
-		//}
+		/// <summary>Whether to assign the minimum and maximum notches to the first and last notches, respectively.</summary>
+		public bool KeepMinMax;
 
-		///// <summary>The mapping for each controller button.</summary>
-		//internal ButtonMappings ButtonMapping;
+		/// <summary>Whether to map the hold brake to B1.</summary>
+		public bool MapHoldBrake;
 
-		//public ControllerProfile(Guid guid)
-		//{
-		//	Guid = guid;
-		//	ButtonMapping = new ButtonMappings();
-		//}
+		/// <summary>An array with the input controls configured for each brake notch.</summary>
+		internal readonly InputControl[] BrakeControls = new InputControl[ZuikiInput.BrakeControlsCount];
+
+		/// <summary>An array with the input controls configured for each power notch.</summary>
+		internal readonly InputControl[] PowerControls = new InputControl[ZuikiInput.PowerControlsCount];
+
+		/// <summary>An array with the input controls configured for each reverser notch.</summary>
+		internal readonly InputControl[] ReverserControls = new InputControl[ZuikiInput.ReverserControlsCount];
+
+		/// <summary>An array with the input controls configured for each button.</summary>
+		public readonly InputControl[] ButtonControls = new InputControl[ZuikiInput.ButtonControlsCount];
 	}
 }

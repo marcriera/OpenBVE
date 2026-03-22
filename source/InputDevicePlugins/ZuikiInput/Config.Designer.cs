@@ -79,6 +79,7 @@ namespace ZuikiInput
             this.deviceInputBox.TabIndex = 1;
             this.deviceInputBox.TabStop = false;
             this.deviceInputBox.Text = "Device input";
+			this.deviceInputBox.Enabled = false;
             // 
             // label_reverser
             // 
@@ -149,6 +150,7 @@ namespace ZuikiInput
             this.handleMappingBox.TabIndex = 5;
             this.handleMappingBox.TabStop = false;
             this.handleMappingBox.Text = "Handle mapping";
+			this.handleMappingBox.Enabled = false;
             // 
             // holdbrakeCheck
             // 

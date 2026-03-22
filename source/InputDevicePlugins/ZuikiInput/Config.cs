@@ -27,9 +27,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using System.Xml.Serialization;
+using Newtonsoft.Json;
 using OpenBveApi.Hosts;
 using OpenBveApi.Interface;
+using OpenBveApi.Runtime;
 using Timer = System.Timers.Timer;
 
 namespace ZuikiInput
@@ -37,33 +38,16 @@ namespace ZuikiInput
 	public partial class Config : Form
 	{
 		/// <summary>The path to the file containing the configuration.</summary>
-		private const string configFilename = "ZuikiInput.xml";
-
-		/// <summary>Struct containing all the settings, for serialization.</summary>
-		public struct ZuikiInputConfiguration
-		{
-			/// <summary>Whether to convert the handle notches to match the driver's train.</summary>
-			public bool ConvertNotches;
-
-			/// <summary>Whether to assign the minimum and maximum notches to the first and last notches, respectively.</summary>
-			public bool KeepMinMax;
-
-			/// <summary>Whether to map the hold brake to B1.</summary>
-			public bool MapHoldBrake;
-
-			/// <summary>The list of controller profiles.</summary>
-			[XmlIgnore]
-			public Dictionary<Guid, ControllerProfile> ControllerProfiles;
-		}
-
-		/// <summary>The configuration for the plugin.</summary>
-		internal ZuikiInputConfiguration Configuration;
+		private const string configFilename = "ZuikiInput.json";
 
 		/// <summary>The list of recognised controllers.</summary>
 		private Dictionary<Guid, Controller> controllers;
 
 		/// <summary>The GUID of the selected controller.</summary>
 		private Guid selectedControllerGuid = Guid.Empty;
+
+		/// <summary>The list of controller profiles.</summary>
+		public Dictionary<Guid, ControllerProfile> ControllerProfiles;
 
 		/// <summary>Timer used to show controller input on the config form.</summary>
 		private readonly Timer inputTimer;
@@ -79,7 +63,8 @@ namespace ZuikiInput
 			controllers = new Dictionary<Guid, Controller>();
 
 			// Initialize the list of controller profiles
-			Configuration.ControllerProfiles = new Dictionary<Guid, ControllerProfile>();
+			ControllerProfiles = new Dictionary<Guid, ControllerProfile>();
+			LoadConfig();
 
 			// Initialize the timer
 			inputTimer = new Timer { Interval = 100 };
@@ -95,10 +80,16 @@ namespace ZuikiInput
 			{
 				try
 				{
-					XmlSerializer serializer = new XmlSerializer(typeof(ZuikiInputConfiguration));
-					FileStream fs = new FileStream(configFile, FileMode.Open);
-					Configuration = (ZuikiInputConfiguration)serializer.Deserialize(fs);
-					fs.Close();
+					string json = File.ReadAllText(configFile);
+					{
+						JsonSerializer serializer = new JsonSerializer();
+						serializer.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+						using (StreamReader sr = new StreamReader(configFile))
+						using (JsonReader reader = new JsonTextReader(sr))
+						{
+							ControllerProfiles = serializer.Deserialize<Dictionary<Guid, ControllerProfile>>(reader);
+						}
+					}
 				}
 				catch
 				{
@@ -119,15 +110,159 @@ namespace ZuikiInput
 			string configFile = OpenBveApi.Path.CombineFile(configFolder, configFilename);
 			try
 			{
-				XmlSerializer serializer = new XmlSerializer(typeof(ZuikiInputConfiguration));
-				FileStream fs = new FileStream(configFile, FileMode.Create);
-				serializer.Serialize(fs, Configuration);
-				fs.Close();
+				JsonSerializer serializer = new JsonSerializer();
+				serializer.NullValueHandling = NullValueHandling.Ignore;
+				serializer.Converters.Add(new Newtonsoft.Json.Converters.StringEnumConverter());
+				using (StreamWriter sw = new StreamWriter(configFile))
+				using (JsonWriter writer = new JsonTextWriter(sw))
+				{
+					writer.Formatting = Formatting.Indented;
+					serializer.Serialize(writer, ControllerProfiles);
+				}
 			}
 			catch
 			{
 				MessageBox.Show("An error occured whilst saving the options for ZUIKI Input Plugin to disk." + Environment.NewLine +
 								"Please check you have write permission.");
+			}
+		}
+
+		/// <summary>Configures the correct mappings for a controller according to the controller profile.</summary>
+		internal void ConfigureMappings(VehicleSpecs specs, Controller controller)
+		{
+			// Get train capabilities
+			Controller.ControllerCapabilities capabilities = controller.Capabilities;
+
+			// Get controller profile; if there is no profile, create one
+			if (!ControllerProfiles.ContainsKey(controller.Guid))
+			{
+				ControllerProfiles.Add(controller.Guid, new ControllerProfile());
+			}
+			ControllerProfile profile = ControllerProfiles[controller.Guid];
+
+			if (!profile.ConvertNotches)
+			{
+				// The notches are not supposed to be converted
+				// Brake notches
+				if (profile.MapHoldBrake && specs.HasHoldBrake)
+				{
+					profile.BrakeControls[0].Command = Translations.Command.BrakeAnyNotch;
+					profile.BrakeControls[0].Option = 0;
+					profile.BrakeControls[1].Command = Translations.Command.HoldBrake;
+					for (int i = 2; i <= capabilities.BrakeNotches + 1; i++)
+					{
+						profile.BrakeControls[i].Command = Translations.Command.BrakeAnyNotch;
+						profile.BrakeControls[i].Option = i - 1;
+					}
+				}
+				else
+				{
+					for (int i = 0; i <= capabilities.BrakeNotches + 1; i++)
+					{
+						profile.BrakeControls[i].Command = Translations.Command.BrakeAnyNotch;
+						profile.BrakeControls[i].Option = i;
+					}
+				}
+				// Emergency brake, only if the train has the same or less notches than the controller
+				if (specs.BrakeNotches <= capabilities.BrakeNotches)
+				{
+					profile.BrakeControls[(int)ControllerState.BrakeNotches.Emergency].Command = Translations.Command.BrakeEmergency;
+				}
+				// Power notches
+				for (int i = 0; i <= capabilities.PowerNotches; i++)
+				{
+					profile.PowerControls[i].Command = Translations.Command.PowerAnyNotch;
+					profile.PowerControls[i].Option = i;
+				}
+			}
+			else
+			{
+				// The notches are supposed to be converted
+				// Brake notches
+				if (profile.MapHoldBrake && specs.HasHoldBrake)
+				{
+					double brakeStep = (specs.BrakeNotches - 1) / (double)(capabilities.BrakeNotches - 1);
+					profile.BrakeControls[0].Command = Translations.Command.BrakeAnyNotch;
+					profile.BrakeControls[0].Option = 0;
+					profile.BrakeControls[1].Command = Translations.Command.HoldBrake;
+					for (int i = 2; i < capabilities.BrakeNotches + 1; i++)
+					{
+						profile.BrakeControls[i].Command = Translations.Command.BrakeAnyNotch;
+						profile.BrakeControls[i].Option = (int)Math.Round(brakeStep * (i - 1), MidpointRounding.AwayFromZero);
+						if (i > 0 && profile.BrakeControls[i].Option == 0)
+						{
+							profile.BrakeControls[i].Option = 1;
+						}
+						if (profile.KeepMinMax && i == 2)
+						{
+							profile.BrakeControls[i].Option = 1;
+						}
+						if (profile.KeepMinMax && i == capabilities.BrakeNotches)
+						{
+							profile.BrakeControls[i].Option = specs.BrakeNotches - 1;
+						}
+					}
+				}
+				else
+				{
+					double brakeStep = specs.BrakeNotches / (double)capabilities.BrakeNotches;
+					for (int i = 0; i < capabilities.BrakeNotches + 1; i++)
+					{
+						profile.BrakeControls[i].Command = Translations.Command.BrakeAnyNotch;
+						profile.BrakeControls[i].Option = (int)Math.Round(brakeStep * i, MidpointRounding.AwayFromZero);
+						if (i > 0 && profile.BrakeControls[i].Option == 0)
+						{
+							profile.BrakeControls[i].Option = 1;
+						}
+						if (profile.KeepMinMax && i == 1)
+						{
+							profile.BrakeControls[i].Option = 1;
+						}
+						if (profile.KeepMinMax && i == capabilities.BrakeNotches)
+						{
+							profile.BrakeControls[i].Option = specs.BrakeNotches;
+						}
+					}
+				}
+				// Emergency brake
+				profile.BrakeControls[(int)ControllerState.BrakeNotches.Emergency].Command = Translations.Command.BrakeEmergency;
+				// Power notches
+				double powerStep = specs.PowerNotches / (double)capabilities.PowerNotches;
+				for (int i = 0; i < capabilities.PowerNotches + 1; i++)
+				{
+					profile.PowerControls[i].Command = Translations.Command.PowerAnyNotch;
+					profile.PowerControls[i].Option = (int)Math.Round(powerStep * i, MidpointRounding.AwayFromZero);
+					if (i > 0 && profile.PowerControls[i].Option == 0)
+					{
+						profile.PowerControls[i].Option = 1;
+					}
+					if (profile.KeepMinMax && i == 1)
+					{
+						profile.PowerControls[i].Option = 1;
+					}
+					if (profile.KeepMinMax && i == capabilities.PowerNotches)
+					{
+						profile.PowerControls[i].Option = specs.PowerNotches;
+					}
+				}
+			}
+
+			if (specs.BrakeType == BrakeTypes.AutomaticAirBrake)
+			{
+				// Trains with an air brake are mapped differently
+				double brakeStep = 3 / (double)(capabilities.BrakeNotches);
+				for (int i = 1; i < capabilities.BrakeNotches + 1; i++)
+				{
+					profile.BrakeControls[i].Command = Translations.Command.BrakeAnyNotch;
+					int notch = ((int)Math.Round(brakeStep * i, MidpointRounding.AwayFromZero) - 1);
+					profile.BrakeControls[i].Option = notch >= 0 ? notch : 0;
+				}
+			}
+
+			for (int i = 0; i < profile.ReverserControls.Length; i++)
+			{
+				profile.ReverserControls[i].Command = Translations.Command.ReverserAnyPosition;
+				profile.ReverserControls[i].Option = i - 1;
 			}
 		}
 
@@ -147,6 +282,12 @@ namespace ZuikiInput
 			foreach (KeyValuePair<Guid, Controller> controller in controllers)
 			{
 				deviceBox.Items.Add(controller.Value.Name);
+				if (!ControllerProfiles.ContainsKey(controller.Key))
+				{
+					// If there is no profile for the active controller, create one
+					ControllerProfiles.Add(controller.Key, new ControllerProfile());
+
+				}
 			}
 
 			// Adjust the width of the device dropdown to prevent truncation
@@ -171,36 +312,36 @@ namespace ZuikiInput
 			switch (brakeNotch)
 			{
 				case ControllerState.BrakeNotches.Released:
-					label_brake.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_brake" }).Replace("[notch]", Translations.QuickReferences.HandleBrakeNull);
+					label_brake.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_brake" }).Replace("[notch]", Translations.QuickReferences.HandleBrakeNull);
 					break;
 				case ControllerState.BrakeNotches.Emergency:
-					label_brake.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_brake" }).Replace("[notch]", Translations.QuickReferences.HandleEmergency);
+					label_brake.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_brake" }).Replace("[notch]", Translations.QuickReferences.HandleEmergency);
 					break;
 				default:
-					label_brake.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_brake" }).Replace("[notch]", Translations.QuickReferences.HandleBrake + (int)brakeNotch);
+					label_brake.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_brake" }).Replace("[notch]", Translations.QuickReferences.HandleBrake + (int)brakeNotch);
 					break;
 			}
 
 			switch (powerNotch)
 			{
 				case ControllerState.PowerNotches.N:
-					label_power.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_power" }).Replace("[notch]", Translations.QuickReferences.HandlePowerNull);
+					label_power.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_power" }).Replace("[notch]", Translations.QuickReferences.HandlePowerNull);
 					break;
 				default:
-					label_power.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_power" }).Replace("[notch]", Translations.QuickReferences.HandlePower + (int)powerNotch);
+					label_power.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_power" }).Replace("[notch]", Translations.QuickReferences.HandlePower + (int)powerNotch);
 					break;
 			}
 
 			switch (reverserPosition)
 			{
 				case ControllerState.ReverserPositions.Forward:
-					label_reverser.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_reverser" }).Replace("[notch]", Translations.QuickReferences.HandleForward);
+					label_reverser.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_reverser" }).Replace("[notch]", Translations.QuickReferences.HandleForward);
 					break;
 				case ControllerState.ReverserPositions.Backward:
-					label_reverser.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_reverser" }).Replace("[notch]", Translations.QuickReferences.HandleBackward);
+					label_reverser.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_reverser" }).Replace("[notch]", Translations.QuickReferences.HandleBackward);
 					break;
 				default:
-					label_reverser.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "kato", "label_reverser" }).Replace("[notch]", Translations.QuickReferences.HandleNeutral);
+					label_reverser.Text = Translations.GetInterfaceString(HostApplication.OpenBve, new[] { "zuiki", "label_reverser" }).Replace("[notch]", Translations.QuickReferences.HandleNeutral);
 					break;
 			}
 		}
@@ -230,12 +371,6 @@ namespace ZuikiInput
 				deviceBox.SelectedIndex = controllers.Keys.ToList().IndexOf(selectedControllerGuid);
 			}
 
-			// Set checkboxes
-			convertnotchesCheck.Checked = Configuration.ConvertNotches;
-			minmaxCheck.Checked = Configuration.KeepMinMax;
-			holdbrakeCheck.Checked = Configuration.MapHoldBrake;
-			minmaxCheck.Enabled = Configuration.ConvertNotches;
-
 			// Start timer
 			inputTimer.Enabled = true;
 
@@ -254,22 +389,32 @@ namespace ZuikiInput
 		{
 			selectedControllerGuid = controllers.Keys.ToList()[deviceBox.SelectedIndex];
 			controllers[selectedControllerGuid].Update();
+
+			// Enable boxes
+			deviceInputBox.Enabled = true;
+			handleMappingBox.Enabled = true;
+
+			// Set checkboxes
+			convertnotchesCheck.Checked = ControllerProfiles[selectedControllerGuid].ConvertNotches;
+			minmaxCheck.Checked = ControllerProfiles[selectedControllerGuid].KeepMinMax;
+			holdbrakeCheck.Checked = ControllerProfiles[selectedControllerGuid].MapHoldBrake;
+			minmaxCheck.Enabled = ControllerProfiles[selectedControllerGuid].ConvertNotches;
 		}
 
 		private void convertnotchesCheck_CheckedChanged(object sender, EventArgs e)
 		{
-			Configuration.ConvertNotches = convertnotchesCheck.Checked;
-			minmaxCheck.Enabled = Configuration.ConvertNotches;
+			ControllerProfiles[selectedControllerGuid].ConvertNotches = convertnotchesCheck.Checked;
+			minmaxCheck.Enabled = ControllerProfiles[selectedControllerGuid].ConvertNotches;
 		}
 
 		private void minmaxCheck_CheckedChanged(object sender, EventArgs e)
 		{
-			Configuration.KeepMinMax = minmaxCheck.Checked;
+			ControllerProfiles[selectedControllerGuid].KeepMinMax = minmaxCheck.Checked;
 		}
 
 		private void holdbrakeCheck_CheckedChanged(object sender, EventArgs e)
 		{
-			Configuration.MapHoldBrake = holdbrakeCheck.Checked;
+			ControllerProfiles[selectedControllerGuid].MapHoldBrake = holdbrakeCheck.Checked;
 		}
 
 		private void buttonSave_Click(object sender, EventArgs e)

@@ -36,6 +36,19 @@ namespace ZuikiInput
 	/// <summary>Input Device Plugin class for controllers by ZUIKI</summary>
 	public class ZuikiInput : ITrainInputDevice
 	{
+		/// <summary>The number of brake controls (maximum brake notches + released + emergency)</summary>
+		internal const int BrakeControlsCount = 10;
+
+		/// <summary>The number of power controls (maximum power notches + neutral)</summary>
+		internal const int PowerControlsCount = 6;
+
+		/// <summary>The number of reverser controls (forward + backward + neutral)</summary>
+		internal const int ReverserControlsCount = 3;
+
+		/// <summary>The number of button controls</summary>
+		internal const int ButtonControlsCount = 16;
+
+
 		public event EventHandler<InputEventArgs> KeyDown;
 		public event EventHandler<InputEventArgs> KeyUp;
 
@@ -59,16 +72,6 @@ namespace ZuikiInput
 
 		/// <summary>The specs of the driver's train.</summary>
 		internal VehicleSpecs TrainSpecs = new VehicleSpecs(5, BrakeTypes.ElectricCommandBrake, 8, false, 1);
-
-		/// <summary>An array with the commands configured for each brake notch.</summary>
-		private readonly InputControl[] brakeCommands = new InputControl[10];
-
-		/// <summary>An array with the commands configured for each power notch.</summary>
-		private readonly InputControl[] powerCommands = new InputControl[6];
-
-		/// <summary>An array with the commands configured for each reverser notch.</summary>
-		private readonly InputControl[] reverserCommands = new InputControl[3];
-
 
 		/// <summary>The list of recognised controllers.</summary>
 		private Dictionary<Guid, Controller> controllers;
@@ -96,11 +99,8 @@ namespace ZuikiInput
 			// Create the config form
 			config = new Config();
 
-			// Load the plugin configuration
-			config.LoadConfig();
-
 			// Initialize controls
-			Controls = new InputControl[brakeCommands.Length + powerCommands.Length + reverserCommands.Length];
+			Controls = new InputControl[BrakeControlsCount + PowerControlsCount + ReverserControlsCount + ButtonControlsCount];
 
 			// Initialize the list of controllers
 			controllers = new Dictionary<Guid, Controller>();
@@ -132,23 +132,30 @@ namespace ZuikiInput
 			{
 				// There is an active controller, update the state
 				Controller controller = controllers[activeControllerGuid];
+				ControllerProfile profile = config.ControllerProfiles[activeControllerGuid];
 				controller.Update();
 
 				// Apply brake handle
 				if (controller.State.BrakeNotch != controller.PreviousState.BrakeNotch || loading)
 				{
-					KeyDown(this, new InputEventArgs(brakeCommands[(int)controller.State.BrakeNotch]));
+					KeyDown(this, new InputEventArgs(profile.BrakeControls[(int)controller.State.BrakeNotch]));
 				}
 				// Apply power handle
 				if (controller.State.PowerNotch != controller.PreviousState.PowerNotch || loading)
 				{
-					KeyDown(this, new InputEventArgs(powerCommands[(int)controller.State.PowerNotch]));
+					KeyDown(this, new InputEventArgs(profile.PowerControls[(int)controller.State.PowerNotch]));
 				}
 				// Apply reverser
 				if (controller.State.ReverserPosition != controller.PreviousState.ReverserPosition || loading)
 				{
-					KeyDown(this, new InputEventArgs(reverserCommands[(int)controller.State.ReverserPosition + 1]));
+					KeyDown(this, new InputEventArgs(profile.ReverserControls[(int)controller.State.ReverserPosition + 1]));
 				}
+				// Apply buttons
+				//foreach (Controller.ControllerButtons button in Enum.GetValues(typeof(Controller.ControllerButtons)))
+				//{
+				//	int index = Array.IndexOf(Enum.GetValues(typeof(Controller.ControllerButtons)), button);
+				//	Console.WriteLine(index);
+				//}
 			}
 
 			loading = false;
@@ -177,7 +184,6 @@ namespace ZuikiInput
 		{
 			TrainSpecs = specs;
 			FindActiveController();
-			ConfigureMappings();
 		}
 
 		/// <summary>Is called when the state of the doors changes.</summary>
@@ -199,148 +205,15 @@ namespace ZuikiInput
 		{
 		}
 
-		/// <summary>Configures the correct mappings for the buttons and notches according to the user settings.</summary>
-		internal void ConfigureMappings()
+		/// <summary>Passes controls to the main program.</summary>
+		/// <param name="guid">The controller Guid.</param>
+		internal void PassControls(Guid guid)
 		{
-			int controllerBrakeNotches = 0;
-			int controllerPowerNotches = 0;
-			if (controllers.ContainsKey(activeControllerGuid))
-			{
-				controllerBrakeNotches = controllers[activeControllerGuid].Capabilities.BrakeNotches;
-				controllerPowerNotches = controllers[activeControllerGuid].Capabilities.PowerNotches;
-			}
-
-			Config.ZuikiInputConfiguration configuration = config.Configuration;
-
-			if (!configuration.ConvertNotches)
-			{
-				// The notches are not supposed to be converted
-				// Brake notches
-				if (configuration.MapHoldBrake && TrainSpecs.HasHoldBrake)
-				{
-					brakeCommands[0].Command = Translations.Command.BrakeAnyNotch;
-					brakeCommands[0].Option = 0;
-					brakeCommands[1].Command = Translations.Command.HoldBrake;
-					for (int i = 2; i <= controllerBrakeNotches + 1; i++)
-					{
-						brakeCommands[i].Command = Translations.Command.BrakeAnyNotch;
-						brakeCommands[i].Option = i - 1;
-					}
-				}
-				else
-				{
-					for (int i = 0; i <= controllerBrakeNotches + 1; i++)
-					{
-						brakeCommands[i].Command = Translations.Command.BrakeAnyNotch;
-						brakeCommands[i].Option = i;
-					}
-				}
-				// Emergency brake, only if the train has the same or less notches than the controller
-				if (TrainSpecs.BrakeNotches <= controllerBrakeNotches)
-				{
-					brakeCommands[(int)ControllerState.BrakeNotches.Emergency].Command = Translations.Command.BrakeEmergency;
-				}
-				// Power notches
-				for (int i = 0; i <= controllerPowerNotches; i++)
-				{
-					powerCommands[i].Command = Translations.Command.PowerAnyNotch;
-					powerCommands[i].Option = i;
-				}
-			}
-			else
-			{
-				// The notches are supposed to be converted
-				// Brake notches
-				if (configuration.MapHoldBrake && TrainSpecs.HasHoldBrake)
-				{
-					double brakeStep = (TrainSpecs.BrakeNotches - 1) / (double)(controllerBrakeNotches - 1);
-					brakeCommands[0].Command = Translations.Command.BrakeAnyNotch;
-					brakeCommands[0].Option = 0;
-					brakeCommands[1].Command = Translations.Command.HoldBrake;
-					for (int i = 2; i < controllerBrakeNotches + 1; i++)
-					{
-						brakeCommands[i].Command = Translations.Command.BrakeAnyNotch;
-						brakeCommands[i].Option = (int)Math.Round(brakeStep * (i - 1), MidpointRounding.AwayFromZero);
-						if (i > 0 && brakeCommands[i].Option == 0)
-						{
-							brakeCommands[i].Option = 1;
-						}
-						if (configuration.KeepMinMax && i == 2)
-						{
-							brakeCommands[i].Option = 1;
-						}
-						if (configuration.KeepMinMax && i == controllerBrakeNotches)
-						{
-							brakeCommands[i].Option = TrainSpecs.BrakeNotches - 1;
-						}
-					}
-				}
-				else
-				{
-					double brakeStep = TrainSpecs.BrakeNotches / (double)controllerBrakeNotches;
-					for (int i = 0; i < controllerBrakeNotches + 1; i++)
-					{
-						brakeCommands[i].Command = Translations.Command.BrakeAnyNotch;
-						brakeCommands[i].Option = (int)Math.Round(brakeStep * i, MidpointRounding.AwayFromZero);
-						if (i > 0 && brakeCommands[i].Option == 0)
-						{
-							brakeCommands[i].Option = 1;
-						}
-						if (configuration.KeepMinMax && i == 1)
-						{
-							brakeCommands[i].Option = 1;
-						}
-						if (configuration.KeepMinMax && i == controllerBrakeNotches)
-						{
-							brakeCommands[i].Option = TrainSpecs.BrakeNotches;
-						}
-					}
-				}
-				// Emergency brake
-				brakeCommands[(int)ControllerState.BrakeNotches.Emergency].Command = Translations.Command.BrakeEmergency;
-				// Power notches
-				double powerStep = TrainSpecs.PowerNotches / (double)controllerPowerNotches;
-				for (int i = 0; i < controllerPowerNotches + 1; i++)
-				{
-					powerCommands[i].Command = Translations.Command.PowerAnyNotch;
-					powerCommands[i].Option = (int)Math.Round(powerStep * i, MidpointRounding.AwayFromZero);
-					if (i > 0 && powerCommands[i].Option == 0)
-					{
-						powerCommands[i].Option = 1;
-					}
-					if (configuration.KeepMinMax && i == 1)
-					{
-						powerCommands[i].Option = 1;
-					}
-					if (configuration.KeepMinMax && i == controllerPowerNotches)
-					{
-						powerCommands[i].Option = TrainSpecs.PowerNotches;
-					}
-				}
-			}
-
-			if (TrainSpecs.BrakeType == BrakeTypes.AutomaticAirBrake)
-			{
-				// Trains with an air brake are mapped differently
-				double brakeStep = 3 / (double)(controllerBrakeNotches);
-				for (int i = 1; i < controllerBrakeNotches + 1; i++)
-				{
-					brakeCommands[i].Command = Translations.Command.BrakeAnyNotch;
-					int notch = ((int)Math.Round(brakeStep * i, MidpointRounding.AwayFromZero) - 1);
-					brakeCommands[i].Option = notch >= 0 ? notch : 0;
-				}
-			}
-
-			for (int i = 0; i < reverserCommands.Length; i++)
-			{
-				reverserCommands[i].Command = Translations.Command.ReverserAnyPosition;
-				reverserCommands[i].Option = i - 1;
-			}
-
-			// Pass commands to the main program
-			brakeCommands.CopyTo(Controls, 0);
-			powerCommands.CopyTo(Controls, brakeCommands.Length);
-			reverserCommands.CopyTo(Controls, brakeCommands.Length + powerCommands.Length);
+			ControllerProfile profile = config.ControllerProfiles[guid];
+			profile.BrakeControls.CopyTo(Controls, 0);
+			profile.PowerControls.CopyTo(Controls, BrakeControlsCount);
+			profile.ReverserControls.CopyTo(Controls, BrakeControlsCount + PowerControlsCount);
+			profile.ButtonControls.CopyTo(Controls, BrakeControlsCount + PowerControlsCount + ReverserControlsCount);
 		}
 
 		/// <summary>Looks for the first connected controller that is supported by the plugin.</summary>
@@ -360,6 +233,8 @@ namespace ZuikiInput
 				if (controller.Value.State.IsConnected)
 				{
 					activeControllerGuid = controller.Key;
+					config.ConfigureMappings(TrainSpecs, controller.Value);
+					PassControls(activeControllerGuid);
 					return;
 				}
 			}
