@@ -168,7 +168,7 @@ namespace DenshaDeGoInput
 					if (DenshaDeGoInput.Ingame)
 					{
 						// Door lamp
-						outputBuffer[1] = (byte)(DenshaDeGoInput.TrainDoorsClosed ? 1 : 0);
+						outputBuffer[0] = (byte)(DenshaDeGoInput.TrainDoorsClosed ? 1 : 0);
 					}
 					break;
 				// TCPP-20011 (Shinkansen)
